@@ -755,14 +755,26 @@ int main_vcfview(int argc, char *argv[])
     int ret = 0;
     if (!args->header_only)
     {
+        // Open file for writing
+        FILE * fp = fopen("/tmp/bcftools_record_count.txt", "w");
+
+        uint64_t record_count = 0;
         while ( bcf_sr_next_line(args->files) )
         {
+            // Go to start of file to override
+            fseek(fp, 0, SEEK_SET);
+            ++record_count;
+            fprintf(fp, "records parsed: %ld", record_count);
+
             bcf1_t *line = args->files->readers[0].buffer[0];
             if ( line->errcode && out_hdr!=args->hdr ) error("Undefined tags in the header, cannot proceed in the sample subset mode.\n");
             if ( subset_vcf(args, line) && bcf_write1(args->out, out_hdr, line)!=0 ) error("[%s] Error: cannot write to %s\n", __func__,args->fn_out);
         }
         ret = args->files->errnum;
         if ( ret ) fprintf(stderr,"Error: %s\n", bcf_sr_strerror(args->files->errnum));
+
+        // Close file
+        fclose(fp);
     }
     hts_close(args->out);
     destroy_data(args);
